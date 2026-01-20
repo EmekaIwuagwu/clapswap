@@ -1,0 +1,31 @@
+query GetPools {
+  pairs(first: 10, orderBy: reserveUSD, orderDirection: desc) {
+    id
+    token0 {
+      symbol
+      name
+    }
+    token1 {
+      symbol
+      name
+    }
+    reserve0
+    reserve1
+    reserveUSD
+    volumeUSD
+  }
+}
+
+query GetUserDashboard($userAddress: String!) {
+  swaps(where: { to: $userAddress }, first: 10, orderBy: timestamp, orderDirection: desc) {
+    timestamp
+    pair {
+      token0 { symbol }
+      token1 { symbol }
+    }
+    amount0In
+    amount1In
+    amount0Out
+    amount1Out
+  }
+}

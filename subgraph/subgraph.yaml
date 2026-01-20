@@ -1,0 +1,56 @@
+specVersion: 0.0.5
+schema:
+  file: ./schema.graphql
+dataSources:
+  - kind: ethereum
+    name: Factory
+    network: coston2
+    source:
+      address: "0xA603b873302EE3D4769C834833ff2c1dfb734d59"
+      abi: Factory
+      startBlock: 8532450
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - Pair
+        - Token
+      abis:
+        - name: Factory
+          file: ../contracts/artifacts/contracts/ClapswapFactory.sol/ClapswapFactory.json
+        - name: ERC20
+          file: ../contracts/artifacts/@openzeppelin/contracts/token/ERC20/ERC20.sol/ERC20.json
+      eventHandlers:
+        - event: PairCreated(indexed address,indexed address,address,uint256)
+          handler: handlePairCreated
+      file: ./src/factory.ts
+templates:
+  - kind: ethereum/contract
+    name: Pair
+    network: coston2
+    source:
+      abi: Pair
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - Swap
+        - Mint
+        - Burn
+      abis:
+        - name: Pair
+          file: ../contracts/artifacts/contracts/ClapswapPair.sol/ClapswapPair.json
+        - name: Factory
+          file: ../contracts/artifacts/contracts/ClapswapFactory.sol/ClapswapFactory.json
+      eventHandlers:
+        - event: Mint(indexed address,uint256,uint256)
+          handler: handleMint
+        - event: Burn(indexed address,uint256,uint256,indexed address)
+          handler: handleBurn
+        - event: Swap(indexed address,uint256,uint256,uint256,uint256,indexed address)
+          handler: handleSwap
+        - event: Sync(uint112,uint112)
+          handler: handleSync
+      file: ./src/pair.ts

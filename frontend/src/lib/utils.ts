@@ -1,0 +1,15 @@
+import { clsx, type ClassValue } from "clsx";
+import { twMerge } from "tailwind-merge";
+
+export function cn(...inputs: ClassValue[]) {
+    return twMerge(clsx(inputs));
+}
+
+export function formatAmount(amount: string | number, decimals: number = 18) {
+    if (!amount) return "0.00";
+    const num = typeof amount === "string" ? parseFloat(amount) : amount;
+    return num.toLocaleString(undefined, {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 6,
+    });
+}
