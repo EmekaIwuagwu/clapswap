@@ -6,9 +6,9 @@ dataSources:
     name: Factory
     network: coston2
     source:
-      address: "0xA603b873302EE3D4769C834833ff2c1dfb734d59"
+      address: "0x038a41b52253923fc6f3153405Dca33Aee3CDABf"
       abi: Factory
-      startBlock: 8532450
+      startBlock: 8557000
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.7
