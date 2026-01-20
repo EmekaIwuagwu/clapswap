@@ -16,16 +16,20 @@ export function AddLiquidityModal({ isOpen, onClose }: { isOpen: boolean; onClos
     const [amountB, setAmountB] = useState("");
     const { address } = useAccount();
 
-    const { data: balanceA } = useBalance({
-        address: address as `0x${string}`,
-        token: tokenA.address === "0x0000000000000000000000000000000000000000" ? undefined : tokenA.address as `0x${string}`,
-    });
-    const { data: balanceB } = useBalance({
-        address: address as `0x${string}`,
-        token: tokenB.address === "0x0000000000000000000000000000000000000000" ? undefined : tokenB.address as `0x${string}`,
-    });
+    // Dynamic Balance Fetching
+    const isNativeA = tokenA.address === "0x0000000000000000000000000000000000000000";
+    const isNativeB = tokenB.address === "0x0000000000000000000000000000000000000000";
 
-    // Approvals
+    const { data: balANative } = useBalance({ address: address as `0x${string}`, query: { enabled: isNativeA } });
+    const { data: balAErc } = useReadContract({ address: tokenA.address as `0x${string}`, abi: ERC20_ABI, functionName: "balanceOf", args: [address as `0x${string}`], query: { enabled: !isNativeA && !!address } });
+
+    const { data: balBNative } = useBalance({ address: address as `0x${string}`, query: { enabled: isNativeB } });
+    const { data: balBErc } = useReadContract({ address: tokenB.address as `0x${string}`, abi: ERC20_ABI, functionName: "balanceOf", args: [address as `0x${string}`], query: { enabled: !isNativeB && !!address } });
+
+    const balanceA = isNativeA ? (balANative ? formatUnits(balANative.value, balANative.decimals) : "0") : (balAErc ? formatUnits(balAErc as bigint, tokenA.decimals) : "0");
+    const balanceB = isNativeB ? (balBNative ? formatUnits(balBNative.value, balBNative.decimals) : "0") : (balBErc ? formatUnits(balBErc as bigint, tokenB.decimals) : "0");
+
+    // Approvals Logic (simplified for now, ideally checks allowance first)
     const { writeContract: write, data: hash, isPending: isTxPending } = useWriteContract();
     const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
 
@@ -80,7 +84,7 @@ export function AddLiquidityModal({ isOpen, onClose }: { isOpen: boolean; onClos
                         <div className="bg-white/5 border border-white/5 rounded-2xl p-4">
                             <div className="flex justify-between mb-2">
                                 <span className="text-sm font-medium text-slate-400">Token 1</span>
-                                <span className="text-sm text-slate-500">Bal: {balanceA ? formatAmount(formatUnits(balanceA.value, balanceA.decimals)) : "0.00"}</span>
+                                <span className="text-sm text-slate-500">Bal: {formatAmount(balanceA)}</span>
                             </div>
                             <div className="flex items-center gap-4">
                                 <input type="number" value={amountA} onChange={(e) => setAmountA(e.target.value)} placeholder="0.0" className="bg-transparent border-none text-2xl font-bold text-white w-full outline-none" />
@@ -98,7 +102,7 @@ export function AddLiquidityModal({ isOpen, onClose }: { isOpen: boolean; onClos
                         <div className="bg-white/5 border border-white/5 rounded-2xl p-4">
                             <div className="flex justify-between mb-2">
                                 <span className="text-sm font-medium text-slate-400">Token 2</span>
-                                <span className="text-sm text-slate-500">Bal: {balanceB ? formatAmount(formatUnits(balanceB.value, balanceB.decimals)) : "0.00"}</span>
+                                <span className="text-sm text-slate-500">Bal: {formatAmount(balanceB)}</span>
                             </div>
                             <div className="flex items-center gap-4">
                                 <input type="number" value={amountB} onChange={(e) => setAmountB(e.target.value)} placeholder="0.0" className="bg-transparent border-none text-2xl font-bold text-white w-full outline-none" />
@@ -120,11 +124,17 @@ export function AddLiquidityModal({ isOpen, onClose }: { isOpen: boolean; onClos
                     <button
                         onClick={handleAddLiquidity}
                         disabled={!amountA || !amountB || isTxPending || isConfirming}
-                        className="w-full mt-8 py-4 bg-gradient-to-r from-orange-500 to-red-600 rounded-2xl font-bold text-lg text-white shadow-lg disabled:opacity-50 flex items-center justify-center gap-2 transition-all hover:scale-[1.02] active:scale-[0.98]"
+                        className="w-full mt-8 py-4 bg-gradient-to-r from-orange-500 to-red-600 rounded-2xl font-bold text-lg text-white shadow-lg disabled:opacity-50 flex items-center justify-center gap-2 transition-all hover:scale-[1.02] active:scale:[0.98]"
                     >
                         {isTxPending || isConfirming ? <Loader2 className="animate-spin" /> : null}
                         {isSuccess ? <CheckCircle2 /> : "Supply Liquidity"}
                     </button>
+
+                    {isSuccess && (
+                        <div className="mt-4 p-3 bg-green-500/10 border border-green-500/20 rounded-xl flex items-center gap-2 text-green-500 text-sm">
+                            <CheckCircle2 size={16} /> Liquidity Provided Successfully!
+                        </div>
+                    )}
                 </motion.div>
             </div>
         </AnimatePresence>
