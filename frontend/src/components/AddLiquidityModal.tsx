@@ -20,25 +20,69 @@ export function AddLiquidityModal({ isOpen, onClose }: { isOpen: boolean; onClos
     const isNativeA = tokenA.address === "0x0000000000000000000000000000000000000000";
     const isNativeB = tokenB.address === "0x0000000000000000000000000000000000000000";
 
-    const { data: balANative } = useBalance({ address: address as `0x${string}`, query: { enabled: isNativeA } });
-    const { data: balAErc } = useReadContract({ address: tokenA.address as `0x${string}`, abi: ERC20_ABI, functionName: "balanceOf", args: [address as `0x${string}`], query: { enabled: !isNativeA && !!address } });
+    const { data: balANative, refetch: rfAN } = useBalance({ address: address as `0x${string}`, query: { enabled: isNativeA } });
+    const { data: balAErc, refetch: rfAE } = useReadContract({ address: tokenA.address as `0x${string}`, abi: ERC20_ABI, functionName: "balanceOf", args: [address as `0x${string}`], query: { enabled: !isNativeA && !!address } });
 
-    const { data: balBNative } = useBalance({ address: address as `0x${string}`, query: { enabled: isNativeB } });
-    const { data: balBErc } = useReadContract({ address: tokenB.address as `0x${string}`, abi: ERC20_ABI, functionName: "balanceOf", args: [address as `0x${string}`], query: { enabled: !isNativeB && !!address } });
+    const { data: balBNative, refetch: rfBN } = useBalance({ address: address as `0x${string}`, query: { enabled: isNativeB } });
+    const { data: balBErc, refetch: rfBE } = useReadContract({ address: tokenB.address as `0x${string}`, abi: ERC20_ABI, functionName: "balanceOf", args: [address as `0x${string}`], query: { enabled: !isNativeB && !!address } });
 
     const balanceA = isNativeA ? (balANative ? formatUnits(balANative.value, balANative.decimals) : "0") : (balAErc ? formatUnits(balAErc as bigint, tokenA.decimals) : "0");
     const balanceB = isNativeB ? (balBNative ? formatUnits(balBNative.value, balBNative.decimals) : "0") : (balBErc ? formatUnits(balBErc as bigint, tokenB.decimals) : "0");
 
-    // Approvals Logic (simplified for now, ideally checks allowance first)
+    // Allowance Check
+    const { data: allowanceA, refetch: rfAA } = useReadContract({
+        address: tokenA.address as `0x${string}`,
+        abi: ERC20_ABI,
+        functionName: "allowance",
+        args: address && !isNativeA ? [address, ROUTER_ADDRESS as `0x${string}`] : undefined,
+        query: { enabled: !!address && !isNativeA }
+    });
+    const { data: allowanceB, refetch: rfAB } = useReadContract({
+        address: tokenB.address as `0x${string}`,
+        abi: ERC20_ABI,
+        functionName: "allowance",
+        args: address && !isNativeB ? [address, ROUTER_ADDRESS as `0x${string}`] : undefined,
+        query: { enabled: !!address && !isNativeB }
+    });
+
+    const isApproveARequired = !isNativeA && (!allowanceA || (allowanceA as bigint) < parseUnits(amountA || "0", tokenA.decimals));
+    const isApproveBRequired = !isNativeB && (!allowanceB || (allowanceB as bigint) < parseUnits(amountB || "0", tokenB.decimals));
+
     const { writeContract: write, data: hash, isPending: isTxPending } = useWriteContract();
     const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
 
-    const handleAddLiquidity = async () => {
+    useEffect(() => {
+        if (isSuccess) {
+            rfAN(); rfAE(); rfBN(); rfBE(); rfAA(); rfAB();
+        }
+    }, [isSuccess]);
+
+    const handleAction = async () => {
         if (!amountA || !amountB || !address) return;
 
         const deadline = BigInt(Math.floor(Date.now() / 1000) + 60 * 20);
         const amtA = parseUnits(amountA, tokenA.decimals);
         const amtB = parseUnits(amountB, tokenB.decimals);
+
+        if (isApproveARequired) {
+            write({
+                address: tokenA.address as `0x${string}`,
+                abi: ERC20_ABI,
+                functionName: "approve",
+                args: [ROUTER_ADDRESS as `0x${string}`, amtA],
+            });
+            return;
+        }
+
+        if (isApproveBRequired) {
+            write({
+                address: tokenB.address as `0x${string}`,
+                abi: ERC20_ABI,
+                functionName: "approve",
+                args: [ROUTER_ADDRESS as `0x${string}`, amtB],
+            });
+            return;
+        }
 
         if (tokenA.symbol === "FLR") {
             write({
@@ -68,6 +112,12 @@ export function AddLiquidityModal({ isOpen, onClose }: { isOpen: boolean; onClos
 
     if (!isOpen) return null;
 
+    const buttonText = isApproveARequired
+        ? `Approve ${tokenA.symbol}`
+        : isApproveBRequired
+            ? `Approve ${tokenB.symbol}`
+            : "Supply Liquidity";
+
     return (
         <AnimatePresence>
             <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
@@ -81,7 +131,7 @@ export function AddLiquidityModal({ isOpen, onClose }: { isOpen: boolean; onClos
                     </div>
 
                     <div className="space-y-4">
-                        <div className="bg-white/5 border border-white/5 rounded-2xl p-4">
+                        <div className="bg-white/5 border border-white/5 rounded-2xl p-4 transition-all hover:bg-white/10">
                             <div className="flex justify-between mb-2">
                                 <span className="text-sm font-medium text-slate-400">Token 1</span>
                                 <span className="text-sm text-slate-500">Bal: {formatAmount(balanceA)}</span>
@@ -95,11 +145,13 @@ export function AddLiquidityModal({ isOpen, onClose }: { isOpen: boolean; onClos
                             </div>
                         </div>
 
-                        <div className="flex justify-center -my-2">
-                            <Plus size={20} className="text-orange-500" />
+                        <div className="flex justify-center -my-2 relative z-10">
+                            <div className="bg-slate-900 p-1 rounded-full border border-white/5">
+                                <Plus size={20} className="text-orange-500" />
+                            </div>
                         </div>
 
-                        <div className="bg-white/5 border border-white/5 rounded-2xl p-4">
+                        <div className="bg-white/5 border border-white/5 rounded-2xl p-4 transition-all hover:bg-white/10">
                             <div className="flex justify-between mb-2">
                                 <span className="text-sm font-medium text-slate-400">Token 2</span>
                                 <span className="text-sm text-slate-500">Bal: {formatAmount(balanceB)}</span>
@@ -117,22 +169,22 @@ export function AddLiquidityModal({ isOpen, onClose }: { isOpen: boolean; onClos
                     <div className="mt-6 bg-orange-500/5 border border-orange-500/10 rounded-2xl p-4 flex gap-3">
                         <Info size={18} className="text-orange-500 shrink-0" />
                         <p className="text-xs text-slate-400 leading-relaxed">
-                            By adding liquidity you'll earn 0.3% of all trades on this pair proportional to your share of the pool.
+                            Adding liquidity requires a two-step process: First, you must <b>Approve</b> the tokens, then you can <b>Supply</b> them to the pool.
                         </p>
                     </div>
 
                     <button
-                        onClick={handleAddLiquidity}
+                        onClick={handleAction}
                         disabled={!amountA || !amountB || isTxPending || isConfirming}
-                        className="w-full mt-8 py-4 bg-gradient-to-r from-orange-500 to-red-600 rounded-2xl font-bold text-lg text-white shadow-lg disabled:opacity-50 flex items-center justify-center gap-2 transition-all hover:scale-[1.02] active:scale:[0.98]"
+                        className="w-full mt-8 py-4 bg-gradient-to-r from-orange-500 to-red-600 rounded-2xl font-bold text-lg text-white shadow-lg disabled:opacity-50 flex items-center justify-center gap-2 transition-all hover:scale-[1.02] active:scale-[0.98]"
                     >
                         {isTxPending || isConfirming ? <Loader2 className="animate-spin" /> : null}
-                        {isSuccess ? <CheckCircle2 /> : "Supply Liquidity"}
+                        {buttonText}
                     </button>
 
-                    {isSuccess && (
+                    {isSuccess && !isApproveARequired && !isApproveBRequired && (
                         <div className="mt-4 p-3 bg-green-500/10 border border-green-500/20 rounded-xl flex items-center gap-2 text-green-500 text-sm">
-                            <CheckCircle2 size={16} /> Liquidity Provided Successfully!
+                            <CheckCircle2 size={16} /> Action Successful!
                         </div>
                     )}
                 </motion.div>

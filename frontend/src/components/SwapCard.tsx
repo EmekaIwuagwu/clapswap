@@ -21,7 +21,7 @@ export function SwapCard() {
 
     const { openConnectModal } = useConnectModal();
     const { isConnected, address } = useAccount();
-    const { quote, isLoading: isQuoteLoading } = useSwap(tokenIn, tokenOut, amountIn);
+    const { quote, isLoading: isQuoteLoading, error: swapError } = useSwap(tokenIn, tokenOut, amountIn);
 
     // Dynamic Balance Fetching
     const isNativeIn = tokenIn.address === "0x0000000000000000000000000000000000000000";
@@ -161,9 +161,17 @@ export function SwapCard() {
                 </div>
 
                 <div className="mt-6 space-y-3 px-1">
+                    {swapError && amountIn && (
+                        <div className="bg-orange-500/10 border border-orange-500/20 rounded-xl p-3 flex gap-2 items-start">
+                            <Info size={16} className="text-orange-500 shrink-0 mt-0.5" />
+                            <p className="text-xs text-orange-200/70">
+                                <b>Insufficient Liquidity:</b> This pool hasn't been seeded yet. Please add liquidity in the "Pools" or "Liquidity" tab first.
+                            </p>
+                        </div>
+                    )}
                     <div className="flex justify-between text-sm">
                         <span className="text-slate-400">Price</span>
-                        <span className="text-slate-200">{amountIn && amountOut ? `1 ${tokenIn.symbol} = ${(parseFloat(amountOut) / parseFloat(amountIn)).toFixed(4)} ${tokenOut.symbol}` : "-"}</span>
+                        <span className="text-slate-200">{amountIn && amountOut && !swapError ? `1 ${tokenIn.symbol} = ${(parseFloat(amountOut) / parseFloat(amountIn)).toFixed(4)} ${tokenOut.symbol}` : "-"}</span>
                     </div>
                 </div>
 

@@ -20,15 +20,16 @@ export function useSwap(tokenIn: any, tokenOut: any, amountIn: string) {
         tokenOut.address === "0x0000000000000000000000000000000000000000" ? WFLR_ADDRESS : tokenOut.address
     ];
 
-    const { data: amountsOut, isLoading: isQuoteLoading } = useReadContract({
+    const { data: amountsOut, isLoading: isQuoteLoading, error } = useReadContract({
         address: ROUTER_ADDRESS as `0x${string}`,
         abi: ROUTER_ABI,
         functionName: "getAmountsOut",
         args: debouncedAmountIn && parseFloat(debouncedAmountIn) > 0
-            ? [parseUnits(debouncedAmountIn, tokenIn.decimals), path]
+            ? [parseUnits(debouncedAmountIn, tokenIn.decimals), path as readonly `0x${string}`[]]
             : undefined,
         query: {
             enabled: !!debouncedAmountIn && parseFloat(debouncedAmountIn) > 0 && tokenIn.address !== tokenOut.address,
+            retry: false,
         }
     });
 
@@ -37,5 +38,6 @@ export function useSwap(tokenIn: any, tokenOut: any, amountIn: string) {
     return {
         quote,
         isLoading: isQuoteLoading,
+        error
     };
 }
