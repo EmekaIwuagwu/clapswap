@@ -6,7 +6,7 @@ import { ConnectButtonCustom } from "./ConnectButtonCustom";
 import { cn } from "@/lib/utils";
 
 const NAV_ITEMS = [
-    { name: "Swap", href: "/" },
+    { name: "Swap", href: "/swap" },
     { name: "Pools", href: "/pools" },
     { name: "Farms", href: "/farms" },
     { name: "Liquidity", href: "/liquidity" },
@@ -16,6 +16,11 @@ const NAV_ITEMS = [
 
 export function Header() {
     const pathname = usePathname();
+    const isLanding = pathname === "/";
+
+    if (isLanding) return null; // We'll have a different or no header on landing maybe?
+    // User said "Then there would be a 'Launch app' which would in turn open the page where people can connect their wallet and stuff."
+    // So on landing page we hide this global header.
 
     return (
         <header className="sticky top-0 z-50 w-full border-b border-white/5 bg-slate-950/50 backdrop-blur-xl">
