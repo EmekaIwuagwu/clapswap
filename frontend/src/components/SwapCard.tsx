@@ -10,6 +10,7 @@ import { cn, formatAmount } from "@/lib/utils";
 import { TOKENS, ROUTER_ADDRESS, WFLR_ADDRESS } from "@/lib/constants";
 import { ROUTER_ABI, ERC20_ABI } from "@/lib/abis";
 import { useSwap } from "@/hooks/useSwap";
+import { TokenSelectModal } from "./TokenSelectModal";
 
 export function SwapCard() {
     const [mounted, setMounted] = useState(false);
@@ -263,40 +264,15 @@ export function SwapCard() {
                 {isSuccess && <div className="mt-4 p-3 bg-green-500/10 border border-green-500/20 rounded-xl flex items-center gap-2 text-green-500 text-sm animate-in fade-in slide-in-from-top-2"><CheckCircle2 size={16} /> Transaction Successful!</div>}
             </div>
 
-            <AnimatePresence>
-                {isSelecting && (
-                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setIsSelecting(null)} className="absolute inset-0 bg-black/80 backdrop-blur-md" />
-                        <motion.div initial={{ opacity: 0, scale: 0.9, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9, y: 20 }} className="relative w-full max-w-md bg-slate-900 border border-white/10 rounded-[32px] overflow-hidden shadow-2xl p-6">
-                            <div className="flex justify-between items-center mb-6">
-                                <h3 className="text-xl font-bold text-white">Select a token</h3>
-                                <button onClick={() => setIsSelecting(null)} className="text-slate-400 hover:text-white">✕</button>
-                            </div>
-                            <div className="relative mb-4">
-                                <Search className="absolute left-4 top-3 text-slate-500" size={18} />
-                                <input placeholder="Search name or paste address" className="w-full bg-white/5 border border-white/10 rounded-2xl py-3 pl-12 pr-4 text-white focus:outline-none focus:border-orange-500/50" />
-                            </div>
-                            <div className="space-y-1 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
-                                {TOKENS.map((token) => (
-                                    <button key={token.address} onClick={() => { if (isSelecting === "in") setTokenIn(token); else setTokenOut(token); setIsSelecting(null); }} className="flex items-center justify-between w-full p-4 hover:bg-white/5 rounded-2xl transition-all group">
-                                        <div className="flex items-center gap-4">
-                                            <div className="relative">
-                                                <img src={token.logo} className="w-10 h-10 rounded-full" />
-                                                <div className="absolute inset-0 rounded-full bg-white/10 group-hover:bg-transparent transition-colors" />
-                                            </div>
-                                            <div className="text-left">
-                                                <div className="font-bold text-white group-hover:text-orange-500 transition-colors uppercase">{token.symbol}</div>
-                                                <div className="text-xs text-slate-500">{token.name}</div>
-                                            </div>
-                                        </div>
-                                        <ArrowDown size={16} className="text-slate-600 -rotate-90 opacity-0 group-hover:opacity-100 transition-all translate-x-2 group-hover:translate-x-0" />
-                                    </button>
-                                ))}
-                            </div>
-                        </motion.div>
-                    </div>
-                )}
-            </AnimatePresence>
+            <TokenSelectModal
+                isOpen={!!isSelecting}
+                onClose={() => setIsSelecting(null)}
+                onSelect={(token) => {
+                    if (isSelecting === "in") setTokenIn(token);
+                    else setTokenOut(token);
+                    setIsSelecting(null);
+                }}
+            />
         </div>
     );
 }

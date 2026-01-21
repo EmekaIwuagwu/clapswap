@@ -1,19 +1,21 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { X, Plus, Info, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
+import { X, Plus, Info, Loader2, CheckCircle2, AlertCircle, ChevronDown } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAccount, useBalance, useReadContract, useWriteContract, useWaitForTransactionReceipt } from "wagmi";
 import { parseUnits, formatUnits } from "viem";
 import { TOKENS, ROUTER_ADDRESS, FACTORY_ADDRESS } from "@/lib/constants";
 import { ROUTER_ABI, ERC20_ABI, FACTORY_ABI } from "@/lib/abis";
 import { formatAmount } from "@/lib/utils";
+import { TokenSelectModal } from "./TokenSelectModal";
 
 export function AddLiquidityModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
     const [tokenA, setTokenA] = useState(TOKENS[0]);
     const [tokenB, setTokenB] = useState(TOKENS[1]);
     const [amountA, setAmountA] = useState("");
     const [amountB, setAmountB] = useState("");
+    const [isSelecting, setIsSelecting] = useState<"A" | "B" | null>(null);
     const { address } = useAccount();
 
     const isNativeA = tokenA.address === "0x0000000000000000000000000000000000000000";
@@ -69,10 +71,9 @@ export function AddLiquidityModal({ isOpen, onClose }: { isOpen: boolean; onClos
             return;
         }
 
-        // Use a much higher gas limit for the first pool creation
         const gasLimit = BigInt(5000000);
 
-        if (tokenA.symbol === "FLR") {
+        if (tokenA.symbol === "FLR" || isNativeA) {
             write({
                 address: ROUTER_ADDRESS as `0x${string}`,
                 abi: ROUTER_ABI,
@@ -82,7 +83,7 @@ export function AddLiquidityModal({ isOpen, onClose }: { isOpen: boolean; onClos
                 // @ts-ignore
                 gas: gasLimit
             });
-        } else if (tokenB.symbol === "FLR") {
+        } else if (tokenB.symbol === "FLR" || isNativeB) {
             write({
                 address: ROUTER_ADDRESS as `0x${string}`,
                 abi: ROUTER_ABI,
@@ -106,7 +107,7 @@ export function AddLiquidityModal({ isOpen, onClose }: { isOpen: boolean; onClos
 
     if (!isOpen) return null;
 
-    const buttonText = isApproveARequired ? `Approve ${tokenA.symbol}` : isApproveBRequired ? `Approve ${tokenB.symbol}` : "Supply Liquidity (Force)";
+    const buttonText = !address ? "Connect Wallet" : isApproveARequired ? `Approve ${tokenA.symbol}` : isApproveBRequired ? `Approve ${tokenB.symbol}` : "Supply Liquidity (Force)";
 
     return (
         <AnimatePresence>
@@ -119,17 +120,18 @@ export function AddLiquidityModal({ isOpen, onClose }: { isOpen: boolean; onClos
                     </div>
 
                     <div className="space-y-4">
-                        <div className="bg-white/5 border border-white/5 rounded-2xl p-4 transition-all hover:bg-white/10">
+                        <div className="bg-white/5 border border-white/5 rounded-2xl p-4 transition-all hover:bg-white/10 group">
                             <div className="flex justify-between mb-2">
                                 <span className="text-sm font-medium text-slate-400">Token 1</span>
                                 <span className="text-sm text-slate-500">Bal: {formatAmount(balanceA)}</span>
                             </div>
                             <div className="flex items-center gap-4">
                                 <input type="number" value={amountA} onChange={(e) => setAmountA(e.target.value)} placeholder="0.0" className="bg-transparent border-none text-2xl font-bold text-white w-full outline-none" />
-                                <div className="flex items-center gap-2 bg-slate-800 rounded-xl px-3 py-1.5 border border-white/10">
+                                <button onClick={() => setIsSelecting("A")} className="flex items-center gap-2 bg-slate-800 rounded-xl px-3 py-1.5 border border-white/10 hover:border-white/20 transition-all active:scale-95 shrink-0">
                                     <img src={tokenA.logo} className="w-5 h-5 rounded-full" />
                                     <span className="font-bold text-sm">{tokenA.symbol}</span>
-                                </div>
+                                    <ChevronDown size={14} className="text-slate-500" />
+                                </button>
                             </div>
                         </div>
 
@@ -137,17 +139,18 @@ export function AddLiquidityModal({ isOpen, onClose }: { isOpen: boolean; onClos
                             <div className="bg-slate-900 p-1 rounded-full border border-white/5"><Plus size={20} className="text-orange-500" /></div>
                         </div>
 
-                        <div className="bg-white/5 border border-white/5 rounded-2xl p-4 transition-all hover:bg-white/10">
+                        <div className="bg-white/5 border border-white/5 rounded-2xl p-4 transition-all hover:bg-white/10 group">
                             <div className="flex justify-between mb-2">
                                 <span className="text-sm font-medium text-slate-400">Token 2</span>
                                 <span className="text-sm text-slate-500">Bal: {formatAmount(balanceB)}</span>
                             </div>
                             <div className="flex items-center gap-4">
                                 <input type="number" value={amountB} onChange={(e) => setAmountB(e.target.value)} placeholder="0.0" className="bg-transparent border-none text-2xl font-bold text-white w-full outline-none" />
-                                <div className="flex items-center gap-2 bg-slate-800 rounded-xl px-3 py-1.5 border border-white/10">
+                                <button onClick={() => setIsSelecting("B")} className="flex items-center gap-2 bg-slate-800 rounded-xl px-3 py-1.5 border border-white/10 hover:border-white/20 transition-all active:scale-95 shrink-0">
                                     <img src={tokenB.logo} className="w-5 h-5 rounded-full" />
                                     <span className="font-bold text-sm">{tokenB.symbol}</span>
-                                </div>
+                                    <ChevronDown size={14} className="text-slate-500" />
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -157,7 +160,7 @@ export function AddLiquidityModal({ isOpen, onClose }: { isOpen: boolean; onClos
                             <AlertCircle size={16} className="shrink-0" />
                             <div className="space-y-1">
                                 <p><b>Force Supply Active:</b> If this fails, go to MetaMask and manually increase the "Gas Limit" to 5,000,000.</p>
-                                <p className="opacity-50">{(writeError || confirmError)?.message.split('.')[0]}</p>
+                                <p className="opacity-50 text-[10px] break-all">{(writeError || confirmError)?.message}</p>
                             </div>
                         </div>
                     )}
@@ -178,6 +181,16 @@ export function AddLiquidityModal({ isOpen, onClose }: { isOpen: boolean; onClos
                     )}
                 </motion.div>
             </div>
+
+            <TokenSelectModal
+                isOpen={!!isSelecting}
+                onClose={() => setIsSelecting(null)}
+                onSelect={(token) => {
+                    if (isSelecting === "A") setTokenA(token);
+                    else setTokenB(token);
+                    setIsSelecting(null);
+                }}
+            />
         </AnimatePresence>
     );
 }
