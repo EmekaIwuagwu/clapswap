@@ -33,12 +33,13 @@ export default function LandingPage() {
                         <img src="/logo.png" alt="Clapswap" className="relative w-full h-full rounded-3xl object-cover shadow-2xl" />
                     </div>
 
-                    <h1 className="text-6xl md:text-8xl lg:text-9xl font-black text-white tracking-tighter leading-[0.9]">
-                        CLAP<span className="text-orange-500">SWAP</span>
+                    <h1 className="text-6xl md:text-8xl lg:text-[10rem] font-black tracking-tight leading-[0.8] flex flex-col items-center">
+                        <span className="bg-gradient-to-b from-white to-white/60 bg-clip-text text-transparent">CLAP</span>
+                        <span className="bg-gradient-to-r from-orange-400 via-orange-500 to-red-600 bg-clip-text text-transparent -mt-2 md:-mt-4">SWAP</span>
                     </h1>
 
                     <p className="text-slate-400 text-lg md:text-2xl max-w-2xl mx-auto font-medium leading-relaxed">
-                        The ultimate decentralized liquidity layer on <span className="text-white">Flare Network</span>. Fast, secure, and drop-dead gorgeous.
+                        The ultimate decentralized liquidity layer on <span className="text-white">Flare Network</span>. Fast, secure, and limitless potential.
                     </p>
 
                     <div className="flex flex-col sm:flex-row items-center justify-center gap-6 pt-4">
