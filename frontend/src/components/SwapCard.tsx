@@ -11,6 +11,7 @@ import { TOKENS, ROUTER_ADDRESS, WFLR_ADDRESS } from "@/lib/constants";
 import { ROUTER_ABI, ERC20_ABI } from "@/lib/abis";
 import { useSwap } from "@/hooks/useSwap";
 import { TokenSelectModal } from "./TokenSelectModal";
+import { SwapConfirmModal, SwapStatusModal } from "./SwapModals";
 
 export function SwapCard() {
     const [mounted, setMounted] = useState(false);
@@ -21,6 +22,8 @@ export function SwapCard() {
     const [isSelecting, setIsSelecting] = useState<"in" | "out" | null>(null);
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
     const [slippage, setSlippage] = useState("0.5");
+    const [isReviewing, setIsReviewing] = useState(false);
+    const [isStatusOpen, setIsStatusOpen] = useState(false);
 
     const { openConnectModal } = useConnectModal();
     const { isConnected, address } = useAccount();
@@ -56,8 +59,17 @@ export function SwapCard() {
     useEffect(() => { setMounted(true); }, []);
     useEffect(() => {
         if (quote) setAmountOut(quote);
-        else if (amountIn === "") setAmountOut("");
+        else if (amountIn === "" || amountIn === "0") {
+            setAmountOut("");
+        }
     }, [quote, amountIn]);
+
+    useEffect(() => {
+        if (hash) {
+            setIsStatusOpen(true);
+            setIsReviewing(false);
+        }
+    }, [hash]);
 
     useEffect(() => {
         if (isSuccess) {
@@ -70,12 +82,6 @@ export function SwapCard() {
         if (!isConnected) return openConnectModal?.();
         if (!amountIn) return;
 
-        const path = bestPath.length > 0 ? bestPath : [
-            isNativeIn ? WFLR_ADDRESS : tokenIn.address,
-            isNativeOut ? WFLR_ADDRESS : tokenOut.address
-        ];
-        const deadline = BigInt(Math.floor(Date.now() / 1000) + 60 * 20);
-
         if (isApprovalRequired) {
             write({
                 address: tokenIn.address as `0x${string}`,
@@ -83,35 +89,47 @@ export function SwapCard() {
                 functionName: "approve",
                 args: [ROUTER_ADDRESS as `0x${string}`, parseUnits(amountIn, tokenIn.decimals)],
             });
-        } else {
-            const amountInWei = parseUnits(amountIn, tokenIn.decimals);
-            const slippageBps = BigInt(Math.floor(parseFloat(slippage) * 100));
-            const amountOutWei = parseUnits(amountOut, tokenOut.decimals);
-            const amountOutMin = (amountOutWei * (BigInt(10000) - slippageBps)) / BigInt(10000);
+            return;
+        }
 
-            if (isNativeIn) {
-                write({
-                    address: ROUTER_ADDRESS as `0x${string}`,
-                    abi: ROUTER_ABI,
-                    functionName: "swapExactFLRForTokens",
-                    args: [amountOutMin, path as readonly `0x${string}`[], address!, deadline],
-                    value: amountInWei,
-                });
-            } else if (isNativeOut) {
-                write({
-                    address: ROUTER_ADDRESS as `0x${string}`,
-                    abi: ROUTER_ABI,
-                    functionName: "swapExactTokensForFLR",
-                    args: [amountInWei, amountOutMin, path as readonly `0x${string}`[], address!, deadline],
-                });
-            } else {
-                write({
-                    address: ROUTER_ADDRESS as `0x${string}`,
-                    abi: ROUTER_ABI,
-                    functionName: "swapExactTokensForTokens",
-                    args: [amountInWei, amountOutMin, path as readonly `0x${string}`[], address!, deadline],
-                });
-            }
+        // If not approval, we're doing a swap. Show review modal first.
+        setIsReviewing(true);
+    };
+
+    const confirmSwap = async () => {
+        const path = bestPath.length > 0 ? bestPath : [
+            isNativeIn ? WFLR_ADDRESS : tokenIn.address,
+            isNativeOut ? WFLR_ADDRESS : tokenOut.address
+        ];
+        const deadline = BigInt(Math.floor(Date.now() / 1000) + 60 * 20);
+
+        const amountInWei = parseUnits(amountIn, tokenIn.decimals);
+        const slippageBps = BigInt(Math.floor(parseFloat(slippage) * 100));
+        const amountOutWei = parseUnits(amountOut, tokenOut.decimals);
+        const amountOutMin = (amountOutWei * (BigInt(10000) - slippageBps)) / BigInt(10000);
+
+        if (isNativeIn) {
+            write({
+                address: ROUTER_ADDRESS as `0x${string}`,
+                abi: ROUTER_ABI,
+                functionName: "swapExactFLRForTokens",
+                args: [amountOutMin, path as readonly `0x${string}`[], address!, deadline],
+                value: amountInWei,
+            });
+        } else if (isNativeOut) {
+            write({
+                address: ROUTER_ADDRESS as `0x${string}`,
+                abi: ROUTER_ABI,
+                functionName: "swapExactTokensForFLR",
+                args: [amountInWei, amountOutMin, path as readonly `0x${string}`[], address!, deadline],
+            });
+        } else {
+            write({
+                address: ROUTER_ADDRESS as `0x${string}`,
+                abi: ROUTER_ABI,
+                functionName: "swapExactTokensForTokens",
+                args: [amountInWei, amountOutMin, path as readonly `0x${string}`[], address!, deadline],
+            });
         }
     };
 
@@ -272,6 +290,27 @@ export function SwapCard() {
                     else setTokenOut(token);
                     setIsSelecting(null);
                 }}
+            />
+
+            <SwapConfirmModal
+                isOpen={isReviewing}
+                onClose={() => setIsReviewing(false)}
+                onConfirm={confirmSwap}
+                tokenIn={tokenIn}
+                tokenOut={tokenOut}
+                amountIn={amountIn}
+                amountOut={amountOut}
+                priceImpact={priceImpact}
+                bestPath={bestPath}
+                slippage={slippage}
+                getTokenSymbol={getTokenSymbol}
+            />
+
+            <SwapStatusModal
+                isOpen={isStatusOpen}
+                onClose={() => setIsStatusOpen(false)}
+                txHash={hash}
+                status={isConfirming || isTxPending ? "pending" : isSuccess ? "success" : "error"}
             />
         </div>
     );
