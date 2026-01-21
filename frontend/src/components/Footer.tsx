@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Twitter, Github, MessageCircle, ExternalLink, ShieldCheck, Zap, Coins } from "lucide-react";
+import { Twitter, Github, MessageCircle, ExternalLink, ShieldCheck, Zap, Coins, Award, Rocket } from "lucide-react";
 
 export function Footer() {
     const currentYear = new Date().getFullYear();
@@ -32,37 +32,37 @@ export function Footer() {
                         </div>
                     </div>
 
-                    {/* Roadmap / TODOs Column */}
+                    {/* Live Features Column */}
                     <div className="space-y-4">
-                        <h4 className="text-sm font-bold text-white uppercase tracking-widest">Roadmap (TODO)</h4>
+                        <h4 className="text-sm font-bold text-white uppercase tracking-widest">Protocol Status</h4>
                         <ul className="space-y-3 text-sm text-slate-400">
-                            <li className="flex items-center gap-2 group cursor-help">
-                                <div className="w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse" />
-                                <span className="group-hover:text-slate-200 transition-colors">FTSO Price Feeds Integration</span>
+                            <li className="flex items-center gap-2 text-slate-200">
+                                <ShieldCheck size={14} className="text-green-500" />
+                                <span>FTSO Oracle Integration</span>
                             </li>
-                            <li className="flex items-center gap-2 group cursor-help">
-                                <div className="w-1.5 h-1.5 rounded-full bg-slate-700" />
-                                <span className="group-hover:text-slate-200 transition-colors">Limit Order Support</span>
+                            <li className="flex items-center gap-2 text-slate-200">
+                                <Zap size={14} className="text-orange-500" />
+                                <span>Multi-hop Routing</span>
                             </li>
-                            <li className="flex items-center gap-2 group cursor-help">
-                                <div className="w-1.5 h-1.5 rounded-full bg-slate-700" />
-                                <span className="group-hover:text-slate-200 transition-colors">Governance Token Launch</span>
+                            <li className="flex items-center gap-2 text-slate-200">
+                                <Award size={14} className="text-blue-500" />
+                                <span>MasterChef Yield Farming</span>
                             </li>
-                            <li className="flex items-center gap-2 group cursor-help">
-                                <div className="w-1.5 h-1.5 rounded-full bg-slate-700" />
-                                <span className="group-hover:text-slate-200 transition-colors">Bridge Integration (LayerZero)</span>
+                            <li className="flex items-center gap-2 text-slate-200">
+                                <Rocket size={14} className="text-purple-500" />
+                                <span>Permissionless Launchpad</span>
                             </li>
                         </ul>
                     </div>
 
                     {/* Resources Column */}
                     <div className="space-y-4">
-                        <h4 className="text-sm font-bold text-white uppercase tracking-widest">Resources</h4>
+                        <h4 className="text-sm font-bold text-white uppercase tracking-widest">Ecosystem</h4>
                         <ul className="space-y-3 text-sm text-slate-400">
-                            <li><Link href="#" className="hover:text-orange-500 transition-colors flex items-center gap-1">Documentation <ExternalLink size={12} /></Link></li>
-                            <li><Link href="#" className="hover:text-orange-500 transition-colors">Flare Explorer</Link></li>
-                            <li><Link href="#" className="hover:text-orange-500 transition-colors">Whitepaper</Link></li>
-                            <li><Link href="#" className="hover:text-orange-500 transition-colors">Brand Assets</Link></li>
+                            <li><Link href="/launchpad" className="hover:text-orange-500 transition-colors">Clapswap Launchpad</Link></li>
+                            <li><Link href="/farms" className="hover:text-orange-500 transition-colors">Yield Farms</Link></li>
+                            <li><Link href="https://coston2-explorer.flare.network/" target="_blank" className="hover:text-orange-500 transition-colors flex items-center gap-1">Flare Explorer <ExternalLink size={12} /></Link></li>
+                            <li><Link href="#" className="hover:text-orange-500 transition-colors">Developer Docs</Link></li>
                         </ul>
                     </div>
 

@@ -1,4 +1,4 @@
-type Factory @entity {
+type Factory @entity(immutable: false) {
   id: ID!
   pairCount: Int!
   totalVolumeUSD: BigDecimal!
@@ -6,7 +6,7 @@ type Factory @entity {
   txCount: BigInt!
 }
 
-type Token @entity {
+type Token @entity(immutable: false) {
   id: ID!
   symbol: String!
   name: String!
@@ -16,7 +16,7 @@ type Token @entity {
   totalLiquidity: BigDecimal!
 }
 
-type Pair @entity {
+type Pair @entity(immutable: false) {
   id: ID!
   token0: Token!
   token1: Token!
@@ -28,7 +28,7 @@ type Pair @entity {
   txCount: BigInt!
 }
 
-type Transaction @entity {
+type Transaction @entity(immutable: true) {
   id: ID!
   blockNumber: BigInt!
   timestamp: BigInt!
@@ -37,7 +37,7 @@ type Transaction @entity {
   swaps: [Swap!]! @derivedFrom(field: "transaction")
 }
 
-type Mint @entity {
+type Mint @entity(immutable: true) {
   id: ID!
   transaction: Transaction!
   timestamp: BigInt!
@@ -48,7 +48,7 @@ type Mint @entity {
   amount1: BigDecimal!
 }
 
-type Burn @entity {
+type Burn @entity(immutable: true) {
   id: ID!
   transaction: Transaction!
   timestamp: BigInt!
@@ -59,7 +59,7 @@ type Burn @entity {
   amount1: BigDecimal!
 }
 
-type Swap @entity {
+type Swap @entity(immutable: true) {
   id: ID!
   transaction: Transaction!
   timestamp: BigInt!

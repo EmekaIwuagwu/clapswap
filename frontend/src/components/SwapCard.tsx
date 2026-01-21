@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { ArrowDown, Settings, Info, Search, Loader2, CheckCircle2 } from "lucide-react";
+import { ArrowDown, Settings, Info, Search, Loader2, CheckCircle2, ChevronDown, AlertTriangle, Share2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAccount, useBalance, useReadContract, useWriteContract, useWaitForTransactionReceipt } from "wagmi";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
@@ -18,10 +18,12 @@ export function SwapCard() {
     const [amountIn, setAmountIn] = useState("");
     const [amountOut, setAmountOut] = useState("");
     const [isSelecting, setIsSelecting] = useState<"in" | "out" | null>(null);
+    const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+    const [slippage, setSlippage] = useState("0.5");
 
     const { openConnectModal } = useConnectModal();
     const { isConnected, address } = useAccount();
-    const { quote, isLoading: isQuoteLoading, error: swapError } = useSwap(tokenIn, tokenOut, amountIn);
+    const { quote, priceImpact, bestPath, isLoading: isQuoteLoading, error: swapError } = useSwap(tokenIn, tokenOut, amountIn);
 
     // Dynamic Balance Fetching
     const isNativeIn = tokenIn.address === "0x0000000000000000000000000000000000000000";
@@ -63,13 +65,11 @@ export function SwapCard() {
         }
     }, [isSuccess]);
 
-    if (!mounted) return <div className="w-full max-w-[480px] h-[500px] bg-slate-900/80 rounded-[32px] animate-pulse" />;
-
     const handleAction = async () => {
         if (!isConnected) return openConnectModal?.();
         if (!amountIn) return;
 
-        const path = [
+        const path = bestPath.length > 0 ? bestPath : [
             isNativeIn ? WFLR_ADDRESS : tokenIn.address,
             isNativeOut ? WFLR_ADDRESS : tokenOut.address
         ];
@@ -84,7 +84,9 @@ export function SwapCard() {
             });
         } else {
             const amountInWei = parseUnits(amountIn, tokenIn.decimals);
-            const amountOutMin = amountOut ? (parseUnits(amountOut, tokenOut.decimals) * BigInt(95)) / BigInt(100) : BigInt(0);
+            const slippageBps = BigInt(Math.floor(parseFloat(slippage) * 100));
+            const amountOutWei = parseUnits(amountOut, tokenOut.decimals);
+            const amountOutMin = (amountOutWei * (BigInt(10000) - slippageBps)) / BigInt(10000);
 
             if (isNativeIn) {
                 write({
@@ -112,6 +114,13 @@ export function SwapCard() {
         }
     };
 
+    const getTokenSymbol = (addr: string) => {
+        if (addr.toLowerCase() === WFLR_ADDRESS.toLowerCase()) return "FLR";
+        return TOKENS.find(t => t.address.toLowerCase() === addr.toLowerCase())?.symbol || "???";
+    };
+
+    if (!mounted) return <div className="w-full max-w-[480px] h-[500px] bg-slate-900/80 rounded-[32px] animate-pulse" />;
+
     return (
         <div className="w-full max-w-[480px] relative">
             <div className="absolute -inset-1 bg-gradient-to-r from-orange-500 to-red-600 rounded-[32px] blur opacity-20 transition duration-1000"></div>
@@ -119,42 +128,66 @@ export function SwapCard() {
             <div className="relative bg-slate-900/80 border border-white/10 backdrop-blur-2xl rounded-[32px] p-6 shadow-2xl">
                 <div className="flex items-center justify-between mb-8">
                     <h2 className="text-xl font-bold text-white tracking-tight">Swap</h2>
-                    <Settings className="text-slate-400 hover:text-white cursor-pointer transition-colors" size={20} />
+                    <button onClick={() => setIsSettingsOpen(!isSettingsOpen)} className="p-2 hover:bg-white/10 rounded-xl transition-colors">
+                        <Settings className={cn("text-slate-400 hover:text-white transition-colors", isSettingsOpen && "text-white rotate-45")} size={20} />
+                    </button>
                 </div>
 
+                <AnimatePresence>
+                    {isSettingsOpen && (
+                        <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="mb-6 overflow-hidden bg-white/5 rounded-2xl p-4 border border-white/10">
+                            <div className="flex justify-between items-center mb-3">
+                                <span className="text-sm font-medium text-slate-300">Slippage Tolerance</span>
+                                <span className="text-sm font-bold text-orange-500">{slippage}%</span>
+                            </div>
+                            <div className="flex gap-2">
+                                {["0.1", "0.5", "1.0"].map((s) => (
+                                    <button key={s} onClick={() => setSlippage(s)} className={cn("flex-1 py-2 rounded-xl text-xs font-bold transition-all", slippage === s ? "bg-orange-500 text-white" : "bg-slate-800 text-slate-400 hover:bg-slate-700")}>
+                                        {s}%
+                                    </button>
+                                ))}
+                                <div className="flex-1 relative">
+                                    <input type="number" value={slippage} onChange={(e) => setSlippage(e.target.value)} className="w-full bg-slate-800 border border-white/5 rounded-xl px-3 py-2 text-xs font-bold text-white focus:outline-none focus:border-orange-500" placeholder="Custom" />
+                                    <span className="absolute right-3 top-2 text-[10px] text-slate-500">%</span>
+                                </div>
+                            </div>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+
                 <div className="space-y-1">
-                    <div className="bg-white/5 border border-white/5 rounded-2xl p-4 hover:border-white/10 transition-all">
+                    <div className="bg-white/5 border border-white/5 rounded-2xl p-4 hover:border-white/10 transition-all focus-within:border-orange-500/50">
                         <div className="flex justify-between mb-2">
                             <span className="text-sm font-medium text-slate-400">You pay</span>
                             <span className="text-sm text-slate-500">Balance: {formatAmount(balanceIn)}</span>
                         </div>
                         <div className="flex items-center gap-4">
                             <input type="number" value={amountIn} onChange={(e) => setAmountIn(e.target.value)} placeholder="0.0" className="bg-transparent border-none text-3xl font-bold text-white w-full outline-none" />
-                            <button onClick={() => setIsSelecting("in")} className="flex items-center gap-2 bg-slate-800 rounded-2xl px-3 py-2 min-w-fit border border-white/10">
+                            <button onClick={() => setIsSelecting("in")} className="flex items-center gap-2 bg-slate-800 rounded-2xl px-3 py-2 min-w-fit border border-white/10 hover:border-white/20 transition-all active:scale-95">
                                 <img src={tokenIn.logo} className="w-6 h-6 rounded-full" />
                                 <span className="font-bold">{tokenIn.symbol}</span>
-                                <ArrowDown size={16} className="text-slate-500" />
+                                <ChevronDown size={16} className="text-slate-500" />
                             </button>
                         </div>
                     </div>
 
                     <div className="flex justify-center -my-3 relative z-10">
-                        <button onClick={() => { setTokenIn(tokenOut); setTokenOut(tokenIn); }} className="p-2 bg-slate-900 border border-white/10 rounded-xl hover:scale-110 transition-transform">
+                        <button onClick={() => { setTokenIn(tokenOut); setTokenOut(tokenIn); setAmountIn(amountOut); }} className="p-2 bg-slate-900 border border-white/10 rounded-xl hover:scale-110 transition-transform active:rotate-180 duration-500 shadow-xl">
                             <ArrowDown size={20} className="text-orange-500" />
                         </button>
                     </div>
 
-                    <div className="bg-white/5 border border-white/5 rounded-2xl p-4 hover:border-white/10 transition-all">
+                    <div className="bg-white/5 border border-white/5 rounded-2xl p-4 hover:border-white/10 transition-all focus-within:border-orange-500/50">
                         <div className="flex justify-between mb-2">
                             <span className="text-sm font-medium text-slate-400">You receive</span>
                             <span className="text-sm text-slate-500">Balance: {formatAmount(balanceOut)}</span>
                         </div>
                         <div className="flex items-center gap-4">
                             <input value={isQuoteLoading ? "..." : amountOut} readOnly placeholder="0.0" className="bg-transparent border-none text-3xl font-bold text-slate-300 w-full outline-none" />
-                            <button onClick={() => setIsSelecting("out")} className="flex items-center gap-2 bg-slate-800 rounded-2xl px-3 py-2 min-w-fit border border-white/10">
+                            <button onClick={() => setIsSelecting("out")} className="flex items-center gap-2 bg-slate-800 rounded-2xl px-3 py-2 min-w-fit border border-white/10 hover:border-white/20 transition-all active:scale-95">
                                 <img src={tokenOut.logo} className="w-6 h-6 rounded-full" />
                                 <span className="font-bold">{tokenOut.symbol}</span>
-                                <ArrowDown size={16} className="text-slate-500" />
+                                <ChevronDown size={16} className="text-slate-500" />
                             </button>
                         </div>
                     </div>
@@ -165,42 +198,98 @@ export function SwapCard() {
                         <div className="bg-orange-500/10 border border-orange-500/20 rounded-xl p-3 flex gap-2 items-start">
                             <Info size={16} className="text-orange-500 shrink-0 mt-0.5" />
                             <p className="text-xs text-orange-200/70">
-                                <b>Insufficient Liquidity:</b> This pool hasn't been seeded yet. Please add liquidity in the "Pools" or "Liquidity" tab first.
+                                <b>Route Failed:</b> No liquidity found for this path. Try a smaller amount or a different token pair.
                             </p>
                         </div>
                     )}
-                    <div className="flex justify-between text-sm">
-                        <span className="text-slate-400">Price</span>
-                        <span className="text-slate-200">{amountIn && amountOut && !swapError ? `1 ${tokenIn.symbol} = ${(parseFloat(amountOut) / parseFloat(amountIn)).toFixed(4)} ${tokenOut.symbol}` : "-"}</span>
-                    </div>
+
+                    {!swapError && amountIn && amountOut && (
+                        <div className="bg-white/5 rounded-xl p-3 space-y-3">
+                            <div className="flex justify-between text-xs">
+                                <span className="text-slate-400">Price</span>
+                                <span className="text-slate-200">1 {tokenIn.symbol} = {(parseFloat(amountOut) / parseFloat(amountIn)).toFixed(6)} {tokenOut.symbol}</span>
+                            </div>
+
+                            {/* Route Visualization */}
+                            <div className="flex justify-between text-xs items-center">
+                                <span className="text-slate-400">Route</span>
+                                <div className="flex items-center gap-1.5 text-orange-500 font-bold">
+                                    {bestPath.map((addr, i) => (
+                                        <React.Fragment key={addr}>
+                                            <span className="bg-white/5 px-2 py-0.5 rounded-md border border-white/5">{getTokenSymbol(addr)}</span>
+                                            {i < bestPath.length - 1 && <Share2 size={10} className="rotate-90 text-slate-600" />}
+                                        </React.Fragment>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div className="flex justify-between text-xs">
+                                <span className="text-slate-400">Minimum Received</span>
+                                <span className="text-slate-200">{formatAmount((parseFloat(amountOut) * (1 - parseFloat(slippage) / 100)).toString())} {tokenOut.symbol}</span>
+                            </div>
+                            <div className="flex justify-between text-xs">
+                                <span className="text-slate-400">Price Impact</span>
+                                <span className={cn(
+                                    "font-medium",
+                                    !priceImpact || priceImpact < 1 ? "text-green-500" :
+                                        priceImpact < 5 ? "text-orange-500" : "text-red-500"
+                                )}>
+                                    {priceImpact ? (priceImpact < 0.01 ? "< 0.01%" : `${priceImpact.toFixed(2)}%`) : "Calculating..."}
+                                </span>
+                            </div>
+                        </div>
+                    )}
                 </div>
+
+                {priceImpact && priceImpact > 5 && (
+                    <div className="mt-4 p-3 bg-red-500/10 border border-red-500/20 rounded-xl flex items-center gap-2 text-red-500 text-xs font-bold">
+                        <AlertTriangle size={16} />
+                        High Price Impact! Significant trade value loss.
+                    </div>
+                )}
 
                 <button
                     onClick={handleAction}
-                    disabled={isConnected && (!amountIn || isTxPending || isConfirming)}
-                    className="w-full mt-8 py-4 bg-gradient-to-r from-orange-500 to-red-600 rounded-2xl font-bold text-lg text-white shadow-lg disabled:opacity-50 flex items-center justify-center gap-2"
+                    disabled={isConnected && (!amountIn || isTxPending || isConfirming || (priceImpact ? priceImpact > 15 : false))}
+                    className={cn(
+                        "w-full mt-8 py-4 rounded-2xl font-bold text-lg text-white shadow-lg disabled:opacity-50 flex items-center justify-center gap-2 transition-all",
+                        priceImpact && priceImpact > 5 ? "bg-red-600 hover:bg-red-700" : "bg-gradient-to-r from-orange-500 to-red-600 hover:scale-[1.02] active:scale-95"
+                    )}
                 >
                     {isTxPending || isConfirming ? <Loader2 className="animate-spin" /> : null}
-                    {!isConnected ? "Connect Wallet" : isApprovalRequired ? "Approve Token" : "Swap"}
+                    {!isConnected ? "Connect Wallet" : isApprovalRequired ? "Approve Token" : priceImpact && priceImpact > 15 ? "Impact Too High" : "Swap"}
                 </button>
 
-                {isSuccess && <div className="mt-4 p-3 bg-green-500/10 border border-green-500/20 rounded-xl flex items-center gap-2 text-green-500 text-sm"><CheckCircle2 size={16} /> Transaction Successful!</div>}
+                {isSuccess && <div className="mt-4 p-3 bg-green-500/10 border border-green-500/20 rounded-xl flex items-center gap-2 text-green-500 text-sm animate-in fade-in slide-in-from-top-2"><CheckCircle2 size={16} /> Transaction Successful!</div>}
             </div>
 
             <AnimatePresence>
                 {isSelecting && (
                     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setIsSelecting(null)} className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
-                        <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="relative w-full max-w-md bg-slate-900 border border-white/10 rounded-3xl overflow-hidden shadow-2xl p-4">
-                            <h3 className="text-lg font-bold mb-4 text-white">Select a token</h3>
-                            <div className="space-y-1">
+                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setIsSelecting(null)} className="absolute inset-0 bg-black/80 backdrop-blur-md" />
+                        <motion.div initial={{ opacity: 0, scale: 0.9, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9, y: 20 }} className="relative w-full max-w-md bg-slate-900 border border-white/10 rounded-[32px] overflow-hidden shadow-2xl p-6">
+                            <div className="flex justify-between items-center mb-6">
+                                <h3 className="text-xl font-bold text-white">Select a token</h3>
+                                <button onClick={() => setIsSelecting(null)} className="text-slate-400 hover:text-white">✕</button>
+                            </div>
+                            <div className="relative mb-4">
+                                <Search className="absolute left-4 top-3 text-slate-500" size={18} />
+                                <input placeholder="Search name or paste address" className="w-full bg-white/5 border border-white/10 rounded-2xl py-3 pl-12 pr-4 text-white focus:outline-none focus:border-orange-500/50" />
+                            </div>
+                            <div className="space-y-1 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
                                 {TOKENS.map((token) => (
-                                    <button key={token.address} onClick={() => { if (isSelecting === "in") setTokenIn(token); else setTokenOut(token); setIsSelecting(null); }} className="flex items-center gap-4 w-full p-3 hover:bg-white/5 rounded-2xl transition-colors">
-                                        <img src={token.logo} className="w-10 h-10 rounded-full" />
-                                        <div className="text-left">
-                                            <div className="font-bold text-white">{token.symbol}</div>
-                                            <div className="text-xs text-slate-500">{token.name}</div>
+                                    <button key={token.address} onClick={() => { if (isSelecting === "in") setTokenIn(token); else setTokenOut(token); setIsSelecting(null); }} className="flex items-center justify-between w-full p-4 hover:bg-white/5 rounded-2xl transition-all group">
+                                        <div className="flex items-center gap-4">
+                                            <div className="relative">
+                                                <img src={token.logo} className="w-10 h-10 rounded-full" />
+                                                <div className="absolute inset-0 rounded-full bg-white/10 group-hover:bg-transparent transition-colors" />
+                                            </div>
+                                            <div className="text-left">
+                                                <div className="font-bold text-white group-hover:text-orange-500 transition-colors uppercase">{token.symbol}</div>
+                                                <div className="text-xs text-slate-500">{token.name}</div>
+                                            </div>
                                         </div>
+                                        <ArrowDown size={16} className="text-slate-600 -rotate-90 opacity-0 group-hover:opacity-100 transition-all translate-x-2 group-hover:translate-x-0" />
                                     </button>
                                 ))}
                             </div>
