@@ -269,14 +269,14 @@ export function SwapCard() {
 
                 <button
                     onClick={handleAction}
-                    disabled={isConnected && (!amountIn || isTxPending || isConfirming || (priceImpact ? priceImpact > 15 : false))}
+                    disabled={isConnected && (!amountIn || isTxPending || isConfirming)}
                     className={cn(
                         "w-full mt-8 py-4 rounded-2xl font-bold text-lg text-white shadow-lg disabled:opacity-50 flex items-center justify-center gap-2 transition-all",
                         priceImpact && priceImpact > 5 ? "bg-red-600 hover:bg-red-700" : "bg-gradient-to-r from-orange-500 to-red-600 hover:scale-[1.02] active:scale-95"
                     )}
                 >
                     {isTxPending || isConfirming ? <Loader2 className="animate-spin" /> : null}
-                    {!isConnected ? "Connect Wallet" : isApprovalRequired ? "Approve Token" : priceImpact && priceImpact > 15 ? "Impact Too High" : "Swap"}
+                    {!isConnected ? "Connect Wallet" : isApprovalRequired ? "Approve Token" : "Swap"}
                 </button>
 
                 {isSuccess && <div className="mt-4 p-3 bg-green-500/10 border border-green-500/20 rounded-xl flex items-center gap-2 text-green-500 text-sm animate-in fade-in slide-in-from-top-2"><CheckCircle2 size={16} /> Transaction Successful!</div>}

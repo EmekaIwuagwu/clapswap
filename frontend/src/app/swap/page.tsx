@@ -1,29 +1,29 @@
 import { SwapCard } from "@/components/SwapCard";
 
-export default function Home() {
+export default function SwapPage() {
   return (
-    <div className="flex flex-col items-center gap-12 w-full max-w-4xl py-12">
-      <div className="text-center space-y-4">
-        <h1 className="text-5xl md:text-6xl font-black tracking-tight bg-gradient-to-b from-white to-slate-400 bg-clip-text text-transparent">
-          The Future of Swap.
+    <div className="flex flex-col items-center gap-16 w-full max-w-4xl py-20 min-h-[80vh] justify-center">
+      <div className="text-center space-y-6">
+        <h1 className="text-6xl md:text-7xl font-black tracking-tight bg-gradient-to-b from-white to-white/40 bg-clip-text text-transparent leading-none">
+          SWAP <span className="text-orange-500 italic font-serif tracking-tighter">Faster.</span>
         </h1>
-        <p className="text-slate-400 text-lg md:text-xl font-medium max-w-lg mx-auto">
-          Lightning-fast liquidity and swaps on <span className="text-orange-500">Flare Network</span>. No friction, just pure decentralized finance.
+        <p className="text-slate-500 text-lg md:text-xl font-medium max-w-xl mx-auto leading-relaxed uppercase tracking-widest text-[10px]">
+          Institutional grade liquidity at your fingertips.
         </p>
       </div>
 
       <SwapCard />
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full mt-12">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-8 w-full mt-12 px-4">
         {[
-          { label: "Total Value Locked", value: "$42.5M", change: "+12.4%" },
-          { label: "24h Volume", value: "$8.2M", change: "+5.1%" },
-          { label: "Active Pairs", value: "1,245", change: "+34" },
+          { label: "Stability Index", value: "99.9%", desc: "Uptime on Flare" },
+          { label: "FTSO Verified", value: "Real-time", desc: "Decentralized Oracle" },
+          { label: "Bridge Status", value: "Active", desc: "Multi-chain ready" },
         ].map((stat, i) => (
-          <div key={i} className="bg-white/5 border border-white/5 backdrop-blur-sm rounded-3xl p-6 transition-all hover:bg-white/10 hover:border-white/10">
-            <div className="text-sm font-medium text-slate-500 mb-1">{stat.label}</div>
-            <div className="text-3xl font-bold mb-2 tracking-tight">{stat.value}</div>
-            <div className="text-xs font-bold text-green-500 bg-green-500/10 w-fit px-2 py-1 rounded-full">{stat.change}</div>
+          <div key={i} className="group bg-slate-900/40 border border-white/5 backdrop-blur-xl rounded-[32px] p-8 transition-all hover:bg-white/5 hover:border-orange-500/20">
+            <div className="text-[10px] font-black text-slate-500 mb-4 tracking-[0.2em] uppercase">{stat.label}</div>
+            <div className="text-3xl font-black text-white mb-2 tracking-tight group-hover:text-orange-500 transition-colors">{stat.value}</div>
+            <div className="text-xs font-medium text-slate-600">{stat.desc}</div>
           </div>
         ))}
       </div>
